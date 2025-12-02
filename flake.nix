@@ -10,27 +10,39 @@
     android-nixpkgs.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-parts, git-hooks, android-nixpkgs }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
+  outputs = inputs @ {
+    self,
+    nixpkgs,
+    flake-parts,
+    git-hooks,
+    android-nixpkgs,
+  }:
+    flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [
         inputs.git-hooks.flakeModule
       ];
 
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
 
-      perSystem = { config, self', inputs', system, ... }:
-        let
-          # Import nixpkgs with Android unfree allowed
-          pkgs = import nixpkgs {
-            inherit system;
-            config = {
-              android_sdk.accept_license = true;
-              allowUnfree = true;
-            };
+      perSystem = {
+        config,
+        self',
+        inputs',
+        system,
+        ...
+      }: let
+        # Import nixpkgs with Android unfree allowed
+        pkgs = import nixpkgs {
+          inherit system;
+          config = {
+            android_sdk.accept_license = true;
+            allowUnfree = true;
           };
+        };
 
-          # Android SDK configuration using android-nixpkgs
-          android-sdk = android-nixpkgs.sdk.${system} (sdkPkgs: with sdkPkgs; [
+        # Android SDK configuration using android-nixpkgs
+        android-sdk = android-nixpkgs.sdk.${system} (sdkPkgs:
+          with sdkPkgs; [
             cmdline-tools-latest
             build-tools-34-0-0
             platform-tools
@@ -38,8 +50,7 @@
             platforms-android-33
             ndk-26-1-10909125
           ]);
-        in
-        {
+      in {
         # Pre-commit hooks configuration
         pre-commit.settings.hooks = {
           # Go formatting and linting
@@ -51,32 +62,34 @@
             config.pre-commit.devShell
           ];
 
-          buildInputs = (with pkgs; [
-            # Go toolchain
-            go
+          buildInputs =
+            (with pkgs; [
+              # Go toolchain
+              go
 
-            # Java Development Kit
-            jdk17
+              # Java Development Kit
+              jdk17
 
-            # Gradle
-            gradle
+              # Gradle
+              gradle
 
-            # Formatters (used by pre-commit hooks)
-            gofumpt
-            gotools # includes goimports
-            ktlint
+              # Formatters (used by pre-commit hooks)
+              gofumpt
+              gotools # includes goimports
+              ktlint
 
-            # Build tools
-            git
-            gnumake
+              # Build tools
+              git
+              gnumake
 
-            # Helpful utilities
-            ripgrep
-            fd
-          ]) ++ [
-            # Android SDK from android-nixpkgs
-            android-sdk
-          ];
+              # Helpful utilities
+              ripgrep
+              fd
+            ])
+            ++ [
+              # Android SDK from android-nixpkgs
+              android-sdk
+            ];
 
           shellHook = ''
             # Set Android SDK environment variables

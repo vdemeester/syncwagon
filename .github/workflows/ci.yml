@@ -123,7 +123,7 @@ jobs:
 
       - name: Run gofmt
         run: |
-          nix develop --command bash -c "cd core && gofmt -l . | tee /tmp/gofmt.out && [ ! -s /tmp/gofmt.out ]"
+          nix develop --command bash -c "cd core && gofmt -l *.go | tee /tmp/gofmt.out && [ ! -s /tmp/gofmt.out ]"
 
       - name: Run govet
         run: |

@@ -2,6 +2,17 @@
 This document outlines the step-by-step implementation plan for the Syncwagon Android application, including project setup, core logic, UI, and testing.
 
 ** Phase 1: The Hybrid Foundation (Skeleton & Plumbing)
+*** Prompt 0: Nix Environment Setup
+- [ ] Initialize a `flake.nix` file to define the development environment.
+- [ ] Ensure the flake provides:
+    - [ ] Go (compatible version for the project).
+    - [ ] JDK (Java Development Kit).
+    - [ ] Android SDK / Platform Tools (or instructions/scripts to manage them if Nix packaging is too volatile).
+    - [ ] `gomobile` tool.
+- [ ] Set up `pre-commit` hooks configuration (`.pre-commit-config.yaml`).
+    - [ ] Include hooks for: `gofmt`/`goimports` (Go), `ktlint` (Kotlin), and standard trailing whitespace/end-of-file checks.
+- [ ] Ensure `nix develop` drops into a shell with all tools available and pre-commit hooks installed.
+
 *** Prompt 1: Project Initialization & Build Pipeline
 - [ ] Create `app/` directory for the Android module.
 - [ ] Create `core/` directory for the Go module.

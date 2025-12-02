@@ -91,6 +91,11 @@ func PinPath(folderID string, filePath string)
 - **Storage Full:** Prevent downloads, notify user with a Snackbar/Dialog.
 - **Sync Conflicts:** Detect conflict files (`.sync-conflict`), notify user, and allow simple resolution (keep local vs. keep remote) or external resolution.
 
+** 4.4. Build Environment
+- **Nix:** The project must use Nix (with Flakes) to provide a reproducible development environment.
+  - This environment should include all necessary dependencies: Android SDK, Go compiler, Gomobile, JDK, etc.
+- **Pre-commit:** Code quality checks (linting, formatting) must be enforced via pre-commit hooks, managed and provided through the Nix environment.
+
 * 5. Testing Plan
 
 ** 5.1. Unit Tests

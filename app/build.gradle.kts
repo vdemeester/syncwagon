@@ -3,33 +3,33 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Gomobile build configuration
-val gomobileBuildDir = file("${project.rootDir}/core/build")
-val gomobileAar = file("$gomobileBuildDir/core.aar")
-
-tasks.register<Exec>("buildGomobile") {
-    group = "build"
-    description = "Build Go core module using gomobile"
-
-    workingDir = file("${project.rootDir}/core")
-    commandLine("sh", "-c", """
-        mkdir -p build && \
-        gomobile bind -v -o build/core.aar -target=android \
-            -androidapi 26 \
-            github.com/vdemeester/syncwagon/core
-    """.trimIndent())
-
-    inputs.files(fileTree("${project.rootDir}/core") {
-        include("**/*.go")
-        exclude("build/**")
-    })
-    outputs.file(gomobileAar)
-}
-
-// TODO: Re-enable once gomobile environment is fully configured
-//tasks.named("preBuild") {
-//    dependsOn("buildGomobile")
-//}
+// TODO: Phase 2 - Re-enable gomobile build integration
+// Gomobile build configuration is deferred until environment issues are resolved
+// See: https://github.com/vdemeester/syncwagon/issues
+//
+// val gomobileBuildDir = file("${project.rootDir}/core/build")
+// val gomobileAar = file("$gomobileBuildDir/core.aar")
+//
+// tasks.register<Exec>("buildGomobile") {
+//     group = "build"
+//     description = "Build Go core module using gomobile"
+//     workingDir = file("${project.rootDir}/core")
+//     commandLine("sh", "-c", """
+//         mkdir -p build && \
+//         gomobile bind -v -o build/core.aar -target=android \
+//             -androidapi 26 \
+//             github.com/vdemeester/syncwagon/core
+//     """.trimIndent())
+//     inputs.files(fileTree("${project.rootDir}/core") {
+//         include("**/*.go")
+//         exclude("build/**")
+//     })
+//     outputs.file(gomobileAar)
+// }
+//
+// tasks.named("preBuild") {
+//     dependsOn("buildGomobile")
+// }
 
 android {
     namespace = "com.github.vdemeester.syncwagon"
@@ -83,9 +83,8 @@ android {
 }
 
 dependencies {
-    // Go core module (gomobile generated)
-    // TODO: Re-enable once gomobile environment is fully configured
-    //implementation(files(gomobileAar))
+    // TODO: Phase 2 - Add Go core module (gomobile generated AAR)
+    // implementation(files(gomobileAar))
 
     // AndroidX Core
     implementation("androidx.core:core-ktx:1.12.0")

@@ -92,22 +92,15 @@
             export GOBIN="$HOME/go/bin"
             export PATH="$GOBIN:$PATH"
 
-            # Install gomobile if not present
-            if [ ! -f "$GOBIN/gomobile" ]; then
-              echo "Installing gomobile..."
-              go install golang.org/x/mobile/cmd/gomobile@latest
-              go install golang.org/x/mobile/cmd/gobind@latest
-              gomobile init
-            fi
-
             echo "Syncwagon development environment loaded!"
             echo "  Go:           $(go version)"
             echo "  Java:         $(java -version 2>&1 | head -n 1)"
             echo "  Android SDK:  $ANDROID_HOME"
             echo "  Gradle:       $(gradle --version | grep Gradle)"
-            echo "  gomobile:     $(gomobile version 2>&1 || echo 'installed')"
             echo ""
             echo "Pre-commit hooks are installed automatically via git-hooks.nix"
+            echo ""
+            echo "Note: gomobile integration is work in progress (Phase 2)"
           '';
         };
 

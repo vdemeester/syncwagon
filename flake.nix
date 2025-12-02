@@ -110,6 +110,9 @@
             echo "Pre-commit hooks are installed automatically via git-hooks.nix"
           '';
         };
+
+        # Nix formatter for `nix fmt`
+        formatter = pkgs.alejandra;
       };
     };
 }

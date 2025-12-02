@@ -1,0 +1,236 @@
+#+TITLE: Syncwagon
+#+AUTHOR: Vincent Demeester
+
+* Overview
+
+Syncwagon is an Android application that brings "browse-first, download-later" functionality to mobile devices, similar to [[https://github.com/EnjoyDev/sushitrain][Synctrain (Sushitrain)]]. It allows users to browse files located on remote Syncthing peers without synchronizing entire directories, enabling on-demand downloading and selective synchronization.
+
+** Key Features
+
+- *Browse-First Paradigm*: View remote files without downloading them
+- *On-Demand Downloads*: Download files only when you need them
+- *Selective Sync*: Pin specific files/folders for permanent synchronization
+- *Hybrid Architecture*: Go core (Syncthing protocol) + Android UI (Jetpack Compose)
+- *Native Performance*: Leverages official Syncthing Go implementation via gomobile
+
+* Architecture
+
+** High-Level Components
+
+- *Frontend (Android/Kotlin)*: Jetpack Compose UI, OS interactions, file I/O, service lifecycle
+- *Backend (Go/Gomobile)*: Syncthing protocol implementation, compiled to AAR library
+- *Communication*: JNI/Gomobile bindings between Android and Go layers
+
+** Directory Structure
+
+#+BEGIN_SRC text
+/
+├── .github/           # GitHub workflows and CI configuration
+├── app/               # Android application (Kotlin + Jetpack Compose)
+│   └── src/
+│       ├── main/      # Main application code
+│       ├── test/      # Unit tests
+│       └── androidTest/ # Instrumentation tests
+├── core/              # Go module (Syncthing wrapper)
+│   ├── syncwagon.go   # Core Go implementation
+│   ├── go.mod         # Go module definition
+│   └── go.sum         # Go dependency checksums
+├── docs/              # Documentation
+│   └── spec.org       # Technical specification
+├── flake.nix          # Nix development environment
+├── flake.lock         # Nix dependency lock file
+└── todo.org           # Development roadmap and checklist
+#+END_SRC
+
+* Prerequisites
+
+** Required Tools
+
+- *[[https://nixos.org/][Nix]]* (with flakes enabled) - For reproducible development environment
+- *[[https://direnv.net/][direnv]]* (optional but recommended) - Automatic environment activation
+
+** System Requirements
+
+- Linux or macOS (x86_64 or aarch64)
+- ~10GB disk space for dependencies
+- Internet connection for initial setup
+
+* Development Setup
+
+** Quick Start with Nix
+
+1. Clone the repository:
+   #+BEGIN_SRC sh
+   git clone https://github.com/vdemeester/syncwagon.git
+   cd syncwagon
+   #+END_SRC
+
+2. Enter the Nix development environment:
+   #+BEGIN_SRC sh
+   nix develop
+   #+END_SRC
+
+   Or, if using direnv:
+   #+BEGIN_SRC sh
+   direnv allow
+   #+END_SRC
+
+3. The development environment provides:
+   - Go 1.25.4
+   - gomobile (installed automatically on first use)
+   - JDK 17
+   - Android SDK (API 33-34, NDK 26)
+   - Gradle 8.14.3
+   - Code formatters (gofmt, ktlint)
+   - Pre-commit hooks (via git-hooks.nix)
+
+** Environment Details
+
+The Nix flake (=flake.nix=) provides a fully reproducible development environment including:
+
+- *Android SDK*: Managed via [[https://github.com/tadfisher/android-nixpkgs][tadfisher/android-nixpkgs]]
+- *Pre-commit Hooks*: Automatic code formatting via [[https://github.com/cachix/git-hooks.nix][git-hooks.nix]]
+  - Go: =gofmt=, =govet=
+  - Kotlin: =ktlint= (when enabled)
+  - Standard checks: trailing whitespace, end-of-file fixers
+
+* Building
+
+** Build Android APK
+
+*** Debug Build
+#+BEGIN_SRC sh
+./gradlew assembleDebug
+#+END_SRC
+
+Output: =app/build/outputs/apk/debug/app-debug.apk=
+
+*** Release Build
+#+BEGIN_SRC sh
+./gradlew assembleRelease
+#+END_SRC
+
+Output: =app/build/outputs/apk/release/app-release-unsigned.apk=
+
+** Build Go Core Module
+
+#+BEGIN_SRC sh
+cd core
+go build -v ./...
+#+END_SRC
+
+** Clean Build Artifacts
+
+#+BEGIN_SRC sh
+./gradlew clean
+#+END_SRC
+
+* Testing
+
+** Run Go Tests
+
+#+BEGIN_SRC sh
+cd core
+go test -v ./...
+#+END_SRC
+
+** Run Android Unit Tests
+
+#+BEGIN_SRC sh
+./gradlew testDebugUnitTest
+#+END_SRC
+
+** Run Android Instrumentation Tests
+
+#+BEGIN_SRC sh
+./gradlew connectedDebugAndroidTest
+#+END_SRC
+
+Note: Requires a connected Android device or emulator.
+
+* Code Quality
+
+** Pre-commit Hooks
+
+Pre-commit hooks are automatically installed when you enter the Nix development environment. They run:
+
+- =gofmt= on Go code
+- =govet= on Go code
+
+To manually run all pre-commit hooks:
+#+BEGIN_SRC sh
+git commit --dry-run
+#+END_SRC
+
+** Manual Linting
+
+*** Go Code
+#+BEGIN_SRC sh
+cd core
+gofmt -l .      # List files that need formatting
+go vet ./...    # Run static analysis
+#+END_SRC
+
+*** Kotlin Code
+#+BEGIN_SRC sh
+ktlint 'app/src/**/*.kt'
+#+END_SRC
+
+*** Android Lint
+#+BEGIN_SRC sh
+./gradlew lint
+#+END_SRC
+
+Reports: =app/build/reports/lint-results.html=
+
+* Project Status
+
+** Current Phase: Foundation (Phase 1)
+
+✅ Completed:
+- Nix development environment with Android SDK
+- Project structure (Android + Go)
+- Basic Android app with Jetpack Compose
+- Gradle build configuration
+- GitHub Actions CI workflow
+- Pre-commit hooks
+
+🚧 In Progress:
+- Go-Android bridge integration (gomobile)
+- Core Syncthing protocol implementation
+
+📋 Planned:
+- File browser UI
+- On-demand download functionality
+- Selective sync (pinning)
+- Background service
+
+See =todo.org= for detailed development roadmap.
+
+* Documentation
+
+- *[[file:docs/spec.org][Technical Specification]]* - Detailed architecture and requirements
+- *[[file:todo.org][Development TODO]]* - Phase-by-phase implementation checklist
+- *[[https://syncthing.net/][Syncthing Documentation]]* - Official Syncthing protocol docs
+
+* Contributing
+
+This project follows a structured development approach:
+
+1. *Read the spec*: =docs/spec.org= contains the full technical specification
+2. *Check the TODO*: =todo.org= tracks current and planned work
+3. *Development workflow*:
+   - Use =nix develop= for a consistent environment
+   - Pre-commit hooks ensure code quality
+   - CI runs on all pull requests
+   - Sign your commits (=git commit --signoff=)
+
+* License
+
+[License information to be added]
+
+* Acknowledgments
+
+- [[https://github.com/syncthing/syncthing][Syncthing]] - The underlying synchronization protocol
+- [[https://github.com/EnjoyDev/sushitrain][Sushitrain]] - Inspiration for the browse-first paradigm
+- [[https://github.com/tadfisher/android-nixpkgs][android-nixpkgs]] - Nix-based Android SDK management

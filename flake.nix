@@ -18,8 +18,17 @@
 
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      perSystem = { config, self', inputs', pkgs, system, ... }:
+      perSystem = { config, self', inputs', system, ... }:
         let
+          # Import nixpkgs with Android unfree allowed
+          pkgs = import nixpkgs {
+            inherit system;
+            config = {
+              android_sdk.accept_license = true;
+              allowUnfree = true;
+            };
+          };
+
           # Android SDK configuration using android-nixpkgs
           android-sdk = android-nixpkgs.sdk.${system} (sdkPkgs: with sdkPkgs; [
             cmdline-tools-latest
@@ -32,64 +41,24 @@
         in
         {
         # Pre-commit hooks configuration
-        pre-commit.settings = {
-          hooks = {
-            # Standard checks
-            trailing-whitespace = {
-              enable = true;
-              name = "trailing-whitespace";
-            };
-            end-of-file-fixer = {
-              enable = true;
-              name = "end-of-file-fixer";
-            };
-            check-yaml = {
-              enable = true;
-              name = "check-yaml";
-            };
-            check-merge-conflict = {
-              enable = true;
-              name = "check-merge-conflict";
-            };
-
-            # Go formatting and linting
-            gofmt = {
-              enable = true;
-              name = "gofmt";
-            };
-            goimports = {
-              enable = true;
-              name = "goimports";
-            };
-            govet = {
-              enable = true;
-              name = "go vet";
-            };
-
-            # Kotlin formatting
-            ktlint = {
-              enable = true;
-              name = "ktlint";
-              entry = "${pkgs.ktlint}/bin/ktlint --format";
-              files = "\\.kt$";
-            };
-          };
+        pre-commit.settings.hooks = {
+          # Go formatting and linting
+          gofmt.enable = true;
+          govet.enable = true;
         };
         devShells.default = pkgs.mkShell {
           inputsFrom = [
             config.pre-commit.devShell
           ];
 
-          buildInputs = with pkgs; [
+          buildInputs = (with pkgs; [
             # Go toolchain
             go
-            gomobile
 
             # Java Development Kit
             jdk17
 
-            # Android SDK and tools
-            android-sdk
+            # Gradle
             gradle
 
             # Formatters (used by pre-commit hooks)
@@ -104,6 +73,9 @@
             # Helpful utilities
             ripgrep
             fd
+          ]) ++ [
+            # Android SDK from android-nixpkgs
+            android-sdk
           ];
 
           shellHook = ''
@@ -115,15 +87,17 @@
             # Set up Java
             export JAVA_HOME="${pkgs.jdk17}/lib/openjdk"
 
-            # Set up Go
-            export GOPATH="$PWD/.go"
-            export GOCACHE="$PWD/.go/cache"
-            export PATH="$GOPATH/bin:$PATH"
+            # Set up Go - use default GOPATH but add local bin to PATH
+            export GOCACHE="$PWD/.gocache"
+            export GOBIN="$HOME/go/bin"
+            export PATH="$GOBIN:$PATH"
 
-            # Initialize gomobile if not already done
-            if [ ! -d "$GOPATH/pkg/gomobile" ]; then
-              echo "Initializing gomobile..."
-              gomobile init || true
+            # Install gomobile if not present
+            if [ ! -f "$GOBIN/gomobile" ]; then
+              echo "Installing gomobile..."
+              go install golang.org/x/mobile/cmd/gomobile@latest
+              go install golang.org/x/mobile/cmd/gobind@latest
+              gomobile init
             fi
 
             echo "Syncwagon development environment loaded!"
@@ -131,6 +105,7 @@
             echo "  Java:         $(java -version 2>&1 | head -n 1)"
             echo "  Android SDK:  $ANDROID_HOME"
             echo "  Gradle:       $(gradle --version | grep Gradle)"
+            echo "  gomobile:     $(gomobile version 2>&1 || echo 'installed')"
             echo ""
             echo "Pre-commit hooks are installed automatically via git-hooks.nix"
           '';

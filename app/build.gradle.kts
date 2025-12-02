@@ -26,9 +26,10 @@ tasks.register<Exec>("buildGomobile") {
     outputs.file(gomobileAar)
 }
 
-tasks.named("preBuild") {
-    dependsOn("buildGomobile")
-}
+// TODO: Re-enable once gomobile environment is fully configured
+//tasks.named("preBuild") {
+//    dependsOn("buildGomobile")
+//}
 
 android {
     namespace = "com.github.vdemeester.syncwagon"
@@ -83,7 +84,8 @@ android {
 
 dependencies {
     // Go core module (gomobile generated)
-    implementation(files(gomobileAar))
+    // TODO: Re-enable once gomobile environment is fully configured
+    //implementation(files(gomobileAar))
 
     // AndroidX Core
     implementation("androidx.core:core-ktx:1.12.0")

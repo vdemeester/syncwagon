@@ -1,8 +1,12 @@
 # Nix
 .direnv/
 .go/
+.gocache/
 result
 result-*
+
+# Claude
+.claude/
 
 # Gradle
 .gradle/

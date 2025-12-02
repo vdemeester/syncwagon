@@ -1,0 +1,107 @@
+#+TITLE: Syncwagon Android Specification
+#+AUTHOR: Gemini Agent
+#+DATE: 2025-12-02
+
+* 1. Executive Summary
+Syncwagon is an Android application designed to bring the "browse-first, download-later" functionality of Synctrain (Sushitrain) to mobile devices. It allows users to browse files located on remote Syncthing peers without synchronizing entire directories, offering on-demand downloading and selective synchronization.
+
+* 2. System Architecture
+The application utilizes a hybrid architecture to leverage the robustness of the official Syncthing Go implementation while providing a native Android experience.
+
+** 2.1. High-Level Components
+- **Frontend (Android/Kotlin):** Handles UI, OS interactions, File I/O, and service lifecycle management.
+- **Backend (Go/Gomobile):** A separate module (`core/`) containing the Syncthing protocol logic. It compiles to a shared library accessed via JNI/Gomobile.
+- **Inter-Process Communication:** The Android layer communicates with the Go layer via generated Java bindings (Gomobile).
+
+** 2.2. Directory Structure
+#+BEGIN_SRC text
+/
+├── app/                  # Android Application (Kotlin)
+├── core/                 # Go Module (Syncthing Wrapper)
+└── docs/                 # Documentation
+#+END_SRC
+
+** 2.3. Syncthing integration
+- **Identity:** Syncwagon operates as an *Independent Peer* with its own Device ID and keys.
+- **Protocol:** Uses standard Syncthing Block Exchange Protocol (BEP).
+- **Service Lifecycle:** Configurable by the user:
+  - *Option A (Default):* Foreground Service (persistent notification, battery optimized) for continuous connectivity.
+  - *Option B:* App-lifecycle bound (connects only when UI is open).
+
+* 3. Functional Requirements
+
+** 3.1. File Browsing (Core)
+- **Virtual View:** The app displays a merged view of the local state and the remote index.
+- **Icons:** Display generic file-type icons for all remote files initially.
+- **Metadata:** Show file name, size, and modification date.
+
+** 3.2. File Access & Storage
+The application manages files in three distinct states:
+1. **Remote-Only:** Exists in the Syncthing index but not locally.
+   - *Action:* Visible in list. Clicking triggers download to Cache.
+2. **Cached (Read-Only):** Downloaded on-demand for viewing.
+   - *Location:* Internal App Cache (e.g., `/data/data/.../cache`).
+   - *Retention:* Prunable by OS or App logic (LRU/Timeout).
+   - *Editing:* Not allowed.
+3. **Pinned/Synced (Read-Write):** Explicitly selected by user for permanent sync.
+   - *Location:* User-Accessible Storage (e.g., `/Download/Syncwagon/<ShareName>/`).
+   - *Behavior:* Two-way synchronization with Syncthing.
+
+** 3.3. Synchronization Workflow
+- **Inbound:** Standard Syncthing pull for pinned files.
+- **Outbound (Modifications):**
+  - App detects external modifications to "Pinned" files via FileObserver or ContentObserver.
+  - *Trigger:* Notify user -> Prompt for Confirmation -> Sync.
+  - *Future:* Configurable (Always Ask / Auto-Sync).
+- **Deletions:**
+  - *CRITICAL:* All deletions (local or remote propagation) require explicit User Confirmation via a dialog.
+
+** 3.4. User Interface
+- **Navigation:** Bottom Navigation Bar.
+  1. **Folders:** Main file browser view.
+  2. **Devices:** Management of connected Syncthing peers.
+  3. **Settings:** App configuration and service preferences.
+
+* 4. Technical Specifications
+
+** 4.1. Data Handling
+- **Database:** Go backend maintains the Syncthing database (likely LevelDB/Sqlite depending on Syncthing core version).
+- **File I/O:** Android frontend handles reading/writing actual files to disk to ensure Scoped Storage compliance.
+
+** 4.2. Go Interface (Proposed `core` API)
+The Go module should expose methods similar to:
+#+BEGIN_SRC go
+package core
+
+// Starts the Syncthing service
+func Start(config Config)
+
+// Returns the list of files for a folder
+func ListFiles(folderID string) []FileInfo
+
+// Requests a file download
+func RequestFile(folderID string, filePath string, priority int)
+
+// Marks a file/folder for permanent sync
+func PinPath(folderID string, filePath string)
+#+END_SRC
+
+** 4.3. Error Handling
+- **Network Errors:** Graceful degradation. UI shows "Offline" status for peers.
+- **Storage Full:** Prevent downloads, notify user with a Snackbar/Dialog.
+- **Sync Conflicts:** Detect conflict files (`.sync-conflict`), notify user, and allow simple resolution (keep local vs. keep remote) or external resolution.
+
+* 5. Testing Plan
+
+** 5.1. Unit Tests
+- **Go Core:** Test protocol logic, index parsing, and state management using `go test`.
+- **Kotlin:** Test UI logic, ViewModels, and Data Repositories using JUnit/Mockk.
+
+** 5.2. Integration Tests
+- **Service Layer:** Verify Gomobile bindings correctly invoke Go functions.
+- **File System:** Verify correct handling of Cache vs. Permanent storage paths.
+
+** 5.3. User Acceptance Tests (UAT)
+- Verify "Browse-first" flow: Ensure browsing remote folder does not trigger downloads.
+- Verify "Pinning": Ensure pinned files persist and sync back changes.
+- Verify "Deletion Safety": Ensure deletion prompts appear.

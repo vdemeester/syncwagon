@@ -1,0 +1,92 @@
+* TODO Syncwagon Android Project Checklist
+This document outlines the step-by-step implementation plan for the Syncwagon Android application, including project setup, core logic, UI, and testing.
+
+** Phase 1: The Hybrid Foundation (Skeleton & Plumbing)
+*** Prompt 1: Project Initialization & Build Pipeline
+- [ ] Create `app/` directory for the Android module.
+- [ ] Create `core/` directory for the Go module.
+- [ ] Initialize the Go module in `core/` named `github.com/vdemeester/syncwagon/core`.
+- [ ] Create `core/syncwagon.go` with a simple `func Greeting() string { return "Hello from Go" }`.
+- [ ] Configure the root `settings.gradle.kts` to include the `app` module.
+- [ ] Configure `app/build.gradle.kts` for Kotlin Android application.
+- [ ] Add `gomobile bind` configuration to `app/build.gradle.kts` or a custom Gradle task to:
+    - [ ] Compile the `core` Go module.
+    - [ ] Generate the `.aar` file.
+    - [ ] Link the generated `.aar` as a dependency for the `app` module.
+
+*** Prompt 2: Verifying the Bridge (Hello World)
+- [ ] In `app/src/main/java/.../MainActivity.kt`, import the generated Go package (e.g., `github.com.vdemeester.syncwagon.core`).
+- [ ] Call `Core.Greeting()` (or the generated equivalent) in `MainActivity.kt`.
+- [ ] Display the result of `Core.Greeting()` using a `Text` Composable in the `MainActivity`'s UI.
+- [ ] Create an Android Instrumentation Test (`ExampleInstrumentedTest.kt`).
+- [ ] In the test, call the Go function and assert it returns "Hello from Go".
+- [ ] Run the Instrumentation Test and ensure it passes.
+
+** Phase 2: Core Domain & Data Binding (The "Brain")
+*** Prompt 3: Defining the Domain Models (Go Layer)
+- [ ] In `core/syncwagon.go`, define a Go struct `File` with fields:
+    - [ ] `Name` (string)
+    - [ ] `Size` (int64)
+    - [ ] `IsDir` (bool)
+    - [ ] `Status` (string, e.g., "remote", "synced")
+- [ ] In `core/syncwagon.go`, define a Go struct `Folder` with fields:
+    - [ ] `ID` (string)
+    - [ ] `Label` (string)
+    - [ ] `Path` (string)
+- [ ] Define a Go interface `Backend` in `core/syncwagon.go` with methods:
+    - [ ] `GetFolders() ([]*Folder, error)`
+    - [ ] `GetFiles(folderID string) ([]*File, error)`
+- [ ] Implement a `MockBackend` struct that satisfies the `Backend` interface.
+- [ ] Implement a constructor `NewMockBackend() Backend` that returns an instance of `MockBackend`.
+- [ ] `MockBackend`'s `GetFolders()` should return hardcoded dummy `Folder` data (e.g., 2 folders).
+- [ ] `MockBackend`'s `GetFiles()` should return hardcoded dummy `File` data for a given `folderID` (e.g., 5 files per folder).
+- [ ] Write Go unit tests (`core/syncwagon_test.go`) to verify `MockBackend` methods return the expected dummy data.
+
+*** Prompt 4: Android Data Layer (Repository Pattern)
+- [ ] Create a Kotlin class `SyncRepository` in the `app` module.
+- [ ] Inject the generated Go `Backend` interface (e.g., `Core.Backend`) into `SyncRepository`'s constructor.
+- [ ] Implement `suspend fun getFolders(): List<Folder>` in `SyncRepository`, calling `backend.GetFolders()`.
+- [ ] Implement `suspend fun getFiles(folderId: String): List<File>` in `SyncRepository`, calling `backend.GetFiles(folderID)`.
+- [ ] Ensure all calls to the Go backend are executed on the `Dispatchers.IO` coroutine dispatcher.
+- [ ] Set up Hilt for Dependency Injection in the `app` module.
+- [ ] Create a Hilt module to provide a singleton instance of `SyncRepository`, initialized with `Core.NewMockBackend()`.
+- [ ] Write JUnit tests for `SyncRepository`, using the `MockBackend` or a mocked version of the Go interface.
+
+** Phase 3: UI Architecture (The "Body")
+*** Prompt 5: UI Shell & Navigation
+- [ ] Set up the Jetpack Compose `NavHost` in `MainActivity.kt` or a dedicated `AppNavigation.kt`.
+- [ ] Create a placeholder `FoldersScreen.kt` Composable function.
+- [ ] Create a placeholder `DevicesScreen.kt` Composable function.
+- [ ] Create a placeholder `SettingsScreen.kt` Composable function.
+- [ ] Implement a `Scaffold` Composable in `MainActivity` or `AppNavigation`.
+- [ ] Integrate a `BottomNavigation` (or `NavigationBar` in M3) within the `Scaffold`.
+- [ ] Define routes for "Folders", "Devices", and "Settings".
+- [ ] Wire up navigation so that selecting a tab in the `BottomNavigation` switches to the corresponding screen.
+- [ ] Verify navigation between tabs works correctly and state is preserved.
+
+** Phase 4: The Browse-First Flow (The Core Feature)
+*** Prompt 6: Feature - Folder List
+- [ ] Create a `FoldersViewModel.kt` class (Hilt injected).
+- [ ] Inject `SyncRepository` into `FoldersViewModel`.
+- [ ] `FoldersViewModel` should call `SyncRepository.getFolders()` on initialization.
+- [ ] `FoldersViewModel` should expose a `StateFlow<UiState<List<Folder>>>` to manage loading, data, and error states.
+- [ ] Update `FoldersScreen.kt` to observe the `StateFlow` from `FoldersViewModel`.
+- [ ] In `FoldersScreen`, render a `LazyColumn` to display the list of folders.
+- [ ] Each folder item in the list should display the `Folder.Label` and potentially `Folder.ID`.
+- [ ] Implement UI elements to show loading indicators and error messages based on the `UiState`.
+- [ ] Write Compose UI Tests for `FoldersScreen` to verify:
+    - [ ] Loading state is shown correctly.
+    - [ ] Folder list renders with dummy data from `MockBackend`.
+    - [ ] Error state is displayed when `SyncRepository` fails.
+
+*** Prompt 7: Feature - File Browser (Navigation)
+- [ ] Update the Navigation Graph to include a route `files/{folderId}`.
+- [ ] Create a `FilesViewModel.kt` that accepts `folderId` as a navigation argument.
+- [ ] `FilesViewModel` should call `SyncRepository.getFiles(folderId)` based on the argument.
+- [ ] Create a `FilesScreen.kt` Composable to display the list of files.
+- [ ] In `FilesScreen`, use a `LazyColumn` to display file items.
+- [ ] Each file item should display `File.Name`, `File.Size`, and `File.Status`.
+- [ ] Implement distinct icons in `FilesScreen` for directories (`File.IsDir == true`) and regular files (`File.IsDir == false`).
+- [ ] Display file sizes in `FilesScreen` in a human-readable format (e.g., "12.5 MB", "500 KB").
+- [ ] Modify `FoldersScreen`: Clicking on a folder item should navigate to `FilesScreen`, passing the `folderId`.
+- [ ] Verify back navigation from `FilesScreen` returns to `FoldersScreen` correctly.
